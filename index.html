@@ -26,6 +26,24 @@
         <span class="topnav-tag">Verification &amp; Trust Management</span>
       </span>
     </button>
+    <details class="creators-menu">
+      <summary aria-label="Creators">
+        <span class="creators-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM16 4.3a3.5 3.5 0 0 1 0 6.4M18 15h.5a3.5 3.5 0 0 1 3.5 3.5V20"/></svg>
+        </span>
+        <span>Creators</span>
+      </summary>
+      <div class="creators-dropdown">
+        <a href="https://github.com/syedebad11ali" target="_blank" rel="noopener noreferrer">
+          <img src="https://avatars.githubusercontent.com/u/194699305?s=80&amp;v=4" alt="">
+          <span>Syed Ebad Ali</span>
+        </a>
+        <a href="https://github.com/ctrl-shift-ali" target="_blank" rel="noopener noreferrer">
+          <img src="https://avatars.githubusercontent.com/u/294586963?s=80&amp;v=4" alt="">
+          <span>M Ali Abeer</span>
+        </a>
+      </div>
+    </details>
     <button class="theme-toggle" id="themeToggle" type="button" role="switch" aria-checked="false" aria-label="Switch to dark theme" title="Switch to dark theme" onclick="toggleTheme()">
       <span class="theme-toggle-track" aria-hidden="true">
         <svg class="theme-toggle-icon moon" viewBox="0 0 24 24"><path d="M20.3 15.1A8.5 8.5 0 0 1 8.9 3.7 8.6 8.6 0 1 0 20.3 15.1Z"/><path d="M16.8 3.2v2.2M15.7 4.3h2.2M20.3 7v1.6M19.5 7.8h1.6"/></svg>
@@ -75,5 +93,17 @@
 <script src="js/extraction.js"></script>
 <script src="js/owner_verification.js"></script>
 <script src="js/app.js"></script>
+<script>
+  (function () {
+    var creatorsMenu = document.querySelector('.creators-menu');
+    if (!creatorsMenu) return;
+    document.addEventListener('pointerdown', function (event) {
+      if (creatorsMenu.open && !creatorsMenu.contains(event.target)) creatorsMenu.open = false;
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') creatorsMenu.open = false;
+    });
+  })();
+</script>
 </body>
 </html>
