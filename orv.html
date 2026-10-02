@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Karachi Property Trust - Price Forecasting</title>
+  <script>window.location.replace('index.html#owner-verification');</script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #08120e; color: #e2e8f0; padding: 16px; margin: 0; }
+    .container { max-width: 450px; margin: 10px auto; background: #0f2319; padding: 20px; border-radius: 12px; border: 1px solid #1c3d2b; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    h2 { color: #fff; margin-top: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.4px; line-height: 1.3; border-bottom: 1px solid #1c3d2b; padding-bottom: 12px; }
+    p { font-size: 13px; color: #94a3b8; line-height: 1.4; }
+    label { display: block; margin-top: 12px; font-weight: 600; font-size: 12px; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px; }
+    input[type="text"] { width: 100%; padding: 11px; margin-top: 4px; border: 1px solid #1c3d2b; border-radius: 6px; background-color: #091710; color: #e2e8f0; box-sizing: border-box; font-size: 14px; }
+    input[type="text"]:focus { outline: none; border-color: #10b981; }
+    input[type="text"]::placeholder { color: #475569; }
+    input[readonly] { color: #cbd5e1; cursor: default; }
+    .search-box { margin: 18px 0 6px; padding: 14px 16px 16px; border: 2px dashed #10b981; border-radius: 8px; background-color: #091710; }
+    .search-box label:first-child { margin-top: 0; }
+    .hint { margin: 6px 0 0; font-size: 11px; color: #64748b; }
+    .btn-submit { width: 100%; background-color: #10b981; color: #042f2e; font-weight: 700; font-size: 15px; padding: 12px; border: none; border-radius: 6px; margin-top: 20px; cursor: pointer; transition: background-color .2s, color .2s; }
+    .btn-submit:hover { background-color: #059669; }
+    .btn-submit.ok { background-color: #10b981; color: #042f2e; }
+    .btn-submit.fail { background-color: #dc2626; color: #fff; }
+    .btn-submit .sub { display: block; font-size: 12px; font-weight: 600; margin-top: 2px; }
+    #yearsError { margin-top: 6px; font-size: 12px; font-weight: 600; color: #f87171; min-height: 14px; }
+    .forecast { margin-top: 18px; padding: 16px; border-radius: 8px; border: 1px solid #1c3d2b; background-color: #091710; text-align: center; }
+    .forecast .caption { font-size: 12px; font-weight: 600; color: #10b981; text-transform: uppercase; letter-spacing: .5px; }
+    .forecast .value { margin: 8px 0 4px; font-size: 24px; font-weight: 800; color: #fff; }
+    .forecast .range, .forecast .meta { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+    .forecast .empty { font-size: 13px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 id="pageTitle"></h2>
+    <p>Enter a registered Property ID to retrieve the record, then set a horizon in years. The price is forecast from the area's estimated value using the price prediction pipeline.</p>
+
+    <div class="search-box">
+      <label for="propertyIdInput">Property ID:</label>
+      <input type="text" id="propertyIdInput" placeholder="e.g. DEMO-KPT-8301" autocomplete="off" spellcheck="false" />
+      <div class="hint">Demo IDs: DEMO-KPT-8301 to DEMO-KPT-8306</div>
+    </div>
+
+    <form id="forecastForm" onsubmit="return false;">
+      <label for="ownerName">Owner Name:</label>
+      <input type="text" id="ownerName" placeholder="Auto-filled Owner Name" readonly />
+      <label for="propertyId">Property ID:</label>
+      <input type="text" id="propertyId" placeholder="Auto-filled Property ID" readonly />
+      <label for="propertyType">Property Type:</label>
+      <input type="text" id="propertyType" placeholder="Auto-filled Property Type" readonly />
+      <label for="area">Area:</label>
+      <input type="text" id="area" placeholder="Auto-filled Area" readonly />
+      <label for="listedPrice">Listed Price:</label>
+      <input type="text" id="listedPrice" placeholder="Auto-filled Listed Price" readonly />
+      <label for="estimatedPrice">Area's Estimated Price Value:</label>
+      <input type="text" id="estimatedPrice" placeholder="Auto-filled Estimated Value" readonly />
+
+      <label for="years">Number of Years:</label>
+      <input type="text" id="years" inputmode="numeric" placeholder="e.g. 2, 5, 10" autocomplete="off" />
+      <div id="yearsError"></div>
+
+      <div class="forecast" id="forecastBox" aria-live="polite">
+        <div class="empty">Verify a property to see its forecast.</div>
+      </div>
+
+      <button type="button" class="btn-submit" id="verifyBtn" onclick="verifyProperty()">Verify Property</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('pageTitle').textContent =
+      "Forecasting Price Trends using Predictive Models".toUpperCase();
+
+    // Property registry (demo records looked up by Property ID)
+    const PROPERTIES = {
+      "DEMO-KPT-8301": { owner: "Hamza Siddiqui",   type: "House",     area: "Clifton",         block: 5,  listed: 74500000 },
+      "DEMO-KPT-8302": { owner: "Sana Farooqui",    type: "Apartment", area: "DHA",             block: 4,  listed: 44000000 },
+      "DEMO-KPT-8303": { owner: "Bilal Ahmed Khan", type: "Plot",      area: "Malir",           block: 3,  listed: 9800000  },
+      "DEMO-KPT-8304": { owner: "Nida Hussain",     type: "Apartment", area: "Gulshan-e-Iqbal", block: 13, listed: 17500000 },
+      "DEMO-KPT-8305": { owner: "Usman Qureshi",    type: "House",     area: "Bahria Town",     block: 2,  listed: 32000000 },
+      "DEMO-KPT-8306": { owner: "Zainab Malik",     type: "Plot",      area: "DHA",             block: 8,  listed: 59000000 }
+    };
+
+    // Historical priced records: [area, block, type, price PKR]
+    const HISTORY = [
+      ["Clifton",5,"House",68000000],["Clifton",5,"House",72000000],["Clifton",5,"House",75000000],["Clifton",5,"House",70000000],
+      ["Clifton",2,"House",62000000],["Clifton",2,"House",65000000],["Clifton",2,"House",60000000],
+      ["Clifton",7,"Apartment",28000000],["Clifton",7,"Apartment",31000000],["Clifton",7,"Apartment",30000000],
+      ["DHA",6,"House",95000000],["DHA",6,"House",102000000],["DHA",6,"House",98000000],
+      ["DHA",4,"Apartment",42000000],["DHA",4,"Apartment",45000000],["DHA",4,"Apartment",40000000],
+      ["DHA",8,"Plot",55000000],["DHA",8,"Plot",58000000],["DHA",8,"Plot",60000000],
+      ["Gulshan-e-Iqbal",13,"Apartment",16000000],["Gulshan-e-Iqbal",13,"Apartment",18000000],["Gulshan-e-Iqbal",13,"Apartment",17000000],
+      ["Gulshan-e-Iqbal",10,"House",38000000],["Gulshan-e-Iqbal",10,"House",40000000],["Gulshan-e-Iqbal",10,"House",36000000],
+      ["Malir",3,"Plot",9000000],["Malir",3,"Plot",10000000],["Malir",3,"Plot",11000000],
+      ["Bahria Town",2,"House",30000000],["Bahria Town",2,"House",33000000],["Bahria Town",2,"House",31000000],
+      ["Bahria Town",1,"Plot",14000000],["Bahria Town",1,"Plot",15000000],["Bahria Town",1,"Plot",13000000]
+    ];
+
+    // Same default as the pipeline: annual_appreciation_rate = 0.05
+    const ANNUAL_APPRECIATION_RATE = 0.05;
+    const MAX_YEARS = 50;
+
+    // Port of the pipeline's HierarchicalEstimator (levels L1 - L4)
+    const norm = s => String(s).trim().replace(/\s+/g, " ").toLowerCase();
+    const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+    const std = a => {
+      if (a.length < 2) return null;
+      const m = mean(a);
+      return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+    };
+    const round1000 = v => Math.round(v / 1000) * 1000;
+
+    const Estimator = (() => {
+      const MIN_SUPPORT = 3;
+      const group = keyFn => {
+        const g = {};
+        HISTORY.forEach(([area, block, type, price]) => {
+          const k = keyFn(norm(area), block, norm(type));
+          (g[k] = g[k] || []).push(price);
+        });
+        return g;
+      };
+      const l1Raw = group((a, b, t) => a + "|" + b + "|" + t);
+      const l2Raw = group((a, b, t) => a + "|" + t);
+      const typeRaw = group((a, b, t) => t);
+      const areaRaw = group((a, b, t) => a);
+      const stats = raw => Object.fromEntries(
+        Object.entries(raw).map(([k, v]) => [k, { mean: mean(v), std: std(v), count: v.length }]));
+      const l1 = stats(l1Raw), l2 = stats(l2Raw), typeStats = stats(typeRaw), areaStats = stats(areaRaw);
+      const globalMean = mean(HISTORY.map(r => r[3]));
+
+      const ratios = {};
+      Object.entries(l2).forEach(([k, s]) => {
+        const [area, type] = k.split("|");
+        (ratios[area] = ratios[area] || []).push(s.mean / typeStats[type].mean);
+      });
+      const areaFactor = Object.fromEntries(Object.entries(ratios).map(([a, r]) => [a, mean(r)]));
+
+      function estimate(areaName, typeName, block) {
+        const area = norm(areaName), type = norm(typeName);
+        const s1 = l1[area + "|" + block + "|" + type];
+        if (s1 && s1.count >= MIN_SUPPORT)
+          return { price: s1.mean, std: s1.std, level: 1, label: "area + block + type mean", n: s1.count };
+        const s2 = l2[area + "|" + type];
+        if (s2)
+          return { price: s2.mean, std: s2.std, level: 2, label: "area + type mean", n: s2.count };
+        if (areaFactor[area] !== undefined) {
+          const n = areaRaw[area].length;
+          return typeStats[type]
+            ? { price: areaFactor[area] * typeStats[type].mean, std: null, level: 3, label: "area factor x global type mean", n: n }
+            : { price: areaStats[area].mean, std: null, level: 3, label: "area mean (type unknown)", n: n };
+        }
+        const t = typeStats[type];
+        return { price: t ? t.mean : globalMean, std: t ? t.std : null, level: 4,
+                 label: t ? "global type mean" : "global mean", n: HISTORY.length };
+      }
+      return { estimate: estimate };
+    })();
+
+    const CONFIDENCE = { 1: "High", 2: "Medium", 3: "Low", 4: "Very low" };
+
+    // Mirrors predict_property_price(..., forecast_years, annual_appreciation_rate)
+    function predictPrice(prop, years) {
+      const est = Estimator.estimate(prop.area, prop.type, prop.block);
+      const current = round1000(est.price);
+      const growth = Math.pow(1 + ANNUAL_APPRECIATION_RATE, years);
+      const range = est.std
+        ? { low: round1000(Math.max(est.price - est.std, 0) * growth), high: round1000((est.price + est.std) * growth) }
+        : null;
+      return { current: current, forecast: round1000(current * growth), range: range,
+               level: est.level, label: est.label, n: est.n, confidence: CONFIDENCE[est.level] };
+    }
+
+    // UI
+    const $ = id => document.getElementById(id);
+    const fmt = v => "PKR " + Math.round(v).toLocaleString("en-US");
+    const btn = $("verifyBtn");
+    let activeProperty = null;
+
+    function setButton(state) {
+      btn.className = "btn-submit" + (state ? " " + state : "");
+      if (state === "ok") btn.innerHTML = "VERIFIED PROPERTY!";
+      else if (state === "fail") btn.innerHTML = 'PROPERTY NOT FOUND!<span class="sub">(Check property ID again!)</span>';
+      else btn.innerHTML = "Verify Property";
+    }
+
+    function clearRecord() {
+      ["ownerName","propertyId","propertyType","area","listedPrice","estimatedPrice"].forEach(id => { $(id).value = ""; });
+      activeProperty = null;
+      $("forecastBox").innerHTML = '<div class="empty">Verify a property to see its forecast.</div>';
+    }
+
+    function readYears() {
+      const raw = $("years").value.trim();
+      if (raw === "") return { years: null, error: "" };
+      if (!/^\d+$/.test(raw)) return { years: null, error: "Enter a whole number of years (e.g. 2, 5, 10)." };
+      const years = parseInt(raw, 10);
+      if (years > MAX_YEARS) return { years: null, error: "Please enter " + MAX_YEARS + " years or fewer." };
+      return { years: years, error: "" };
+    }
+
+    function renderForecast() {
+      const box = $("forecastBox");
+      const parsed = readYears();
+      $("yearsError").textContent = parsed.error;
+      if (!activeProperty) return;
+      if (parsed.years === null) {
+        box.innerHTML = '<div class="empty">Enter the number of years to see the forecast.</div>';
+        return;
+      }
+      const years = parsed.years;
+      const r = predictPrice(activeProperty, years);
+      box.innerHTML =
+        '<div class="caption">Predicted price after ' + years + (years === 1 ? ' year' : ' years') + '</div>' +
+        '<div class="value">' + fmt(r.forecast) + '</div>' +
+        (r.range ? '<div class="range">Likely range: ' + fmt(r.range.low) + ' &ndash; ' + fmt(r.range.high) + '</div>' : '') +
+        '<div class="meta">Assumes ' + (ANNUAL_APPRECIATION_RATE * 100).toFixed(0) + '% annual appreciation &middot; ' +
+        'Base: ' + r.label + ' (' + r.n + ' records) &middot; Confidence: ' + r.confidence + '</div>';
+    }
+
+    function verifyProperty() {
+      const id = $("propertyIdInput").value.trim().toUpperCase();
+      const prop = PROPERTIES[id];
+      if (!prop) { clearRecord(); setButton("fail"); return; }
+
+      activeProperty = prop;
+      const est = Estimator.estimate(prop.area, prop.type, prop.block);
+      $("ownerName").value = prop.owner;
+      $("propertyId").value = id;
+      $("propertyType").value = prop.type;
+      $("area").value = prop.area + ", Block " + prop.block;
+      $("listedPrice").value = fmt(prop.listed);
+      $("estimatedPrice").value = fmt(round1000(est.price));
+      setButton("ok");
+      renderForecast();
+    }
+
+    $("propertyIdInput").addEventListener("input", () => { clearRecord(); setButton(null); });
+    $("propertyIdInput").addEventListener("keydown", e => { if (e.key === "Enter") verifyProperty(); });
+    $("years").addEventListener("input", e => { e.target.value = e.target.value.replace(/[^\d]/g, ""); renderForecast(); });
+    $("years").addEventListener("keydown", e => { if (e.key === "Enter") verifyProperty(); });
+  </script>
+</body>
+</html>

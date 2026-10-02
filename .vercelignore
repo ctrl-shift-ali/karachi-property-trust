@@ -1,0 +1,12 @@
+# Not needed at runtime; keeps the deployment (and the Flask function bundle) small.
+tests/
+testpack/
+**/__pycache__/
+*.pyc
+.env
+.env*
+# Training/analysis leftovers in the dataset folder (frontend only fetches the *.csv files)
+public/assets/Dataset/*.xlsx
+public/assets/Dataset/*.ipynb
+public/assets/Dataset/price_model.joblib
+public/assets/Dataset/price_prediction_pipeline.py

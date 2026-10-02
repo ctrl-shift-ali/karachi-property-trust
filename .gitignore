@@ -1,0 +1,8 @@
+Chatbot/.env
+Chatbot/.env1
+.env
+.env.*
+.vercel/
+.venv/
+__pycache__/
+*.py[cod]
